@@ -535,14 +535,28 @@
     let standupSeconds = 600;
     let isTimerRunning = false;
 
-    // --- INITIALIZATION ---
+    // --- INITIALIZATION (HYBRID LOCAL + FIREBASE ENGINE) ---
     window.addEventListener('DOMContentLoaded', () => {
       initDatabase();
-      renderBoard();
     });
 
-    // FLEXIBLE FIREBASE / LOCALSTORAGE INITIALIZATION
     function initDatabase() {
+      // Step 1: ALWAYS load local storage first so UI renders immediately and user data is never lost
+      const localData = localStorage.getItem('bizops_local_tickets');
+      if (localData) {
+        try {
+          tickets = JSON.parse(localData);
+        } catch(e) {
+          tickets = INITIAL_TICKETS;
+          saveLocal();
+        }
+      } else {
+        tickets = INITIAL_TICKETS;
+        saveLocal();
+      }
+      renderBoard();
+
+      // Step 2: Attempt connection to Firebase Cloud if user configured keys
       const savedConfig = localStorage.getItem('bizops_firebase_config');
       if (savedConfig) {
         try {
@@ -554,34 +568,38 @@
           isFirebaseActive = true;
           updateSyncBadge(true);
           listenToFirestore();
-          return;
         } catch (err) {
-          console.warn('Firebase init error, falling back to LocalStorage:', err);
+          console.warn('Firebase init error, using LocalStorage fallback:', err);
+          updateSyncBadge(false);
         }
-      }
-      
-      // Fallback to LocalStorage
-      updateSyncBadge(false);
-      const localData = localStorage.getItem('bizops_local_tickets');
-      if (localData) {
-        tickets = JSON.parse(localData);
       } else {
-        tickets = INITIAL_TICKETS;
-        saveLocal();
+        updateSyncBadge(false);
       }
-      renderBoard();
     }
 
     function listenToFirestore() {
       if (!db) return;
       db.collection('tickets').onSnapshot(snapshot => {
-        tickets = [];
-        snapshot.forEach(doc => {
-          tickets.push({ id: doc.id, ...doc.data() });
-        });
-        renderBoard();
+        if (!snapshot.empty) {
+          // Cloud database has documents: pull down and update local cache & UI
+          const cloudTickets = [];
+          snapshot.forEach(doc => {
+            cloudTickets.push({ id: doc.id, ...doc.data() });
+          });
+          tickets = cloudTickets;
+          saveLocal();
+          renderBoard();
+        } else if (tickets.length > 0) {
+          // Cloud database is empty (e.g., newly created project): push local tickets up to populate cloud
+          tickets.forEach(t => {
+            db.collection('tickets').doc(t.id).set(t);
+          });
+        }
       }, err => {
         console.error("Firestore listener error:", err);
+        if (err.code === 'permission-denied') {
+          alert("Firebase Permission Denied!\n\nFirestore Security Rules are currently blocking reads/writes. Please go to your Firebase Console -> Firestore -> Rules and set:\n\nallow read, write: if true;");
+        }
       });
     }
 
@@ -590,25 +608,37 @@
     }
 
     async function persistTicket(ticket) {
+      // Step A: Immediately save locally & render (Guarantees zero ticket loss)
+      const idx = tickets.findIndex(t => t.id === ticket.id);
+      if (idx >= 0) tickets[idx] = ticket;
+      else tickets.push(ticket);
+
+      saveLocal();
+      renderBoard();
+
+      // Step B: Send copy to Cloud Database
       if (isFirebaseActive && db) {
-        await db.collection('tickets').doc(ticket.id).set(ticket);
-      } else {
-        const idx = tickets.findIndex(t => t.id === ticket.id);
-        if (idx >= 0) tickets[idx] = ticket;
-        else tickets.push(ticket);
-        saveLocal();
-        renderBoard();
+        try {
+          await db.collection('tickets').doc(ticket.id).set(ticket);
+        } catch (err) {
+          console.error("Cloud write error:", err);
+          alert("Note: Saved locally on your device, but Cloud Sync failed: " + err.message);
+        }
       }
     }
 
     async function deleteTicket(id) {
       if (confirm("Are you sure you want to delete this ticket?")) {
+        tickets = tickets.filter(t => t.id !== id);
+        saveLocal();
+        renderBoard();
+
         if (isFirebaseActive && db) {
-          await db.collection('tickets').doc(id).delete();
-        } else {
-          tickets = tickets.filter(t => t.id !== id);
-          saveLocal();
-          renderBoard();
+          try {
+            await db.collection('tickets').doc(id).delete();
+          } catch(err) {
+            console.error("Cloud delete error:", err);
+          }
         }
       }
     }
@@ -981,152 +1011,6 @@
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
   </script>
-<script>
-    // --- BOARD COLUMNS SPECIFICATION ---
-    const COLUMNS = [
-      { id: 'BACKLOG', title: '1. Backlog', color: 'border-slate-600', badgeBg: 'bg-slate-700' },
-      { id: 'INTAKE', title: '2. Intake Verification', color: 'border-blue-500', badgeBg: 'bg-blue-600' },
-      { id: 'IN_PROGRESS', title: '3. In Progress', color: 'border-amber-500', badgeBg: 'bg-amber-600' },
-      { id: 'BLOCKED', title: '4. Blocked / Pending', color: 'border-red-500', badgeBg: 'bg-red-600' },
-      { id: 'DONE', title: '5. Completed', color: 'border-emerald-500', badgeBg: 'bg-emerald-600' }
-    ];
 
-    // HARDCODED FIREBASE CONFIG (Replace with your actual keys from Firebase Console)
-    const HARDCODED_FIREBASE_CONFIG = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "central-ops-board.firebaseapp.com",
-      projectId: "central-ops-board",
-      storageBucket: "central-ops-board.appspot.com",
-      messagingSenderId: "392259052021",
-      appId: "YOUR_APP_ID"
-    };
-
-    // STATE MANAGEMENT
-    let tickets = [];
-    let db = null;
-    let isFirebaseActive = false;
-    let showBlockersOnly = false;
-    let mobileActiveColumn = 'ALL';
-    
-    // Standup Timer State
-    let standupTimerInterval = null;
-    let standupSeconds = 600;
-    let isTimerRunning = false;
-
-    // --- INITIALIZATION FOR MULTI-COMPUTER SYNC ---
-    window.addEventListener('DOMContentLoaded', () => {
-      initDatabase();
-    });
-
-    function initDatabase() {
-      // 1. Load local backup first for instant UI render
-      const localData = localStorage.getItem('bizops_local_tickets');
-      if (localData) {
-        try { tickets = JSON.parse(localData); } catch(e) {}
-      }
-      renderBoard();
-
-      // 2. Determine Firebase Configuration
-      let configObj = null;
-      const savedConfig = localStorage.getItem('bizops_firebase_config');
-      
-      if (savedConfig) {
-        try { configObj = parseConfigFlexible(savedConfig); } catch(e) {}
-      } else if (HARDCODED_FIREBASE_CONFIG && HARDCODED_FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY") {
-        configObj = HARDCODED_FIREBASE_CONFIG;
-      }
-
-      // 3. Connect to Cloud
-      if (configObj) {
-        try {
-          if (!firebase.apps.length) {
-            firebase.initializeApp(configObj);
-          }
-          db = firebase.firestore();
-          isFirebaseActive = true;
-          updateSyncBadge(true);
-          listenToFirestoreRealtime();
-        } catch (err) {
-          console.error('Firebase connection error:', err);
-          updateSyncBadge(false);
-        }
-      } else {
-        updateSyncBadge(false);
-      }
-    }
-
-    // REAL-TIME MULTI-DEVICE LISTENER
-    function listenToFirestoreRealtime() {
-      if (!db) return;
-
-      // Listen for changes across ALL computers connected to this Firestore database
-      db.collection('tickets').onSnapshot(snapshot => {
-        const cloudTickets = [];
-        snapshot.forEach(doc => {
-          cloudTickets.push({ id: doc.id, ...doc.data() });
-        });
-
-        // Update local memory & browser cache
-        tickets = cloudTickets;
-        saveLocal();
-        renderBoard();
-      }, err => {
-        console.error("Firestore Listener Error:", err);
-        if (err.code === 'permission-denied') {
-          alert("Multi-User Sync Error: Firestore Security Rules are blocking access. Please enable read/write in Firebase Console.");
-        }
-      });
-    }
-
-    function saveLocal() {
-      localStorage.setItem('bizops_local_tickets', JSON.stringify(tickets));
-    }
-
-    // MULTI-USER SAVE ACTION
-    async function persistTicket(ticket) {
-      if (isFirebaseActive && db) {
-        try {
-          // Write directly to Cloud. Firestore's onSnapshot will broadcast 
-          // the update to all computers automatically within < 1 second.
-          await db.collection('tickets').doc(ticket.id).set(ticket);
-        } catch (err) {
-          console.error("Cloud write failed:", err);
-          alert("Failed to sync to cloud! " + err.message);
-          
-          // Fallback to local save if cloud write fails
-          saveTicketLocally(ticket);
-        }
-      } else {
-        saveTicketLocally(ticket);
-      }
-    }
-
-    function saveTicketLocally(ticket) {
-      const idx = tickets.findIndex(t => t.id === ticket.id);
-      if (idx >= 0) tickets[idx] = ticket;
-      else tickets.push(ticket);
-      saveLocal();
-      renderBoard();
-    }
-
-    // MULTI-USER DELETE ACTION
-    async function deleteTicket(id) {
-      if (confirm("Are you sure you want to delete this ticket across all devices?")) {
-        if (isFirebaseActive && db) {
-          try {
-            await db.collection('tickets').doc(id).delete();
-          } catch(err) {
-            console.error("Cloud delete error:", err);
-            alert("Delete failed: " + err.message);
-          }
-        } else {
-          tickets = tickets.filter(t => t.id !== id);
-          saveLocal();
-          renderBoard();
-        }
-      }
-    }
-
-</script>
 </body>
 </html>
