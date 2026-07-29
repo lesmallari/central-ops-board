@@ -1,1233 +1,956 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Central Ops Board & Operating Hub</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        brand: {
-                            50: '#f0fdf4',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                            900: '#14532d',
-                        }
-                    }
-                }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BizOps Central Ops Board</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              900: '#14532d',
             }
+          }
         }
-    </script>
-    <style>
-        /* Custom scrollbars for Kanban columns */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.6);
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(51, 65, 85, 0.8);
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(71, 85, 105, 1);
-        }
-        .kanban-ghost {
-            opacity: 0.4;
-            border: 2px dashed #3b82f6;
-        }
-    </style>
+      }
+    }
+  </script>
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Firebase Compat SDKs for seamless single-file execution -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* Custom scrollbar for mobile touch & webkit */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(51, 65, 85, 0.8);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(71, 85, 105, 1);
+    }
+    /* Touch snap scrolling for columns on mobile */
+    .snap-x-mandatory {
+      scroll-snap-type: x mandatory;
+    }
+    .snap-column {
+      scroll-snap-align: start;
+    }
+  </style>
 </head>
-<body class="h-full flex flex-col font-sans overflow-hidden bg-slate-950 text-slate-100 antialiased selection:bg-blue-500 selection:text-white">
+<body class="h-full flex flex-col font-sans antialiased overflow-x-hidden selection:bg-brand-500 selection:text-white">
 
-    <header class="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-6 flex items-center justify-between z-20 shrink-0">
-        <div class="flex items-center space-x-4">
-            <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">
-                <i class="fa-solid fa-layer-group text-lg"></i>
-            </div>
-            <div>
-                <h1 class="font-bold text-lg leading-tight tracking-wide text-white">Central Ops Board</h1>
-                <p class="text-xs text-slate-400">BizOps Inter-Departmental Operating System</p>
-            </div>
+  <!-- APP HEADER -->
+  <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-30 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logo & Title -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-slate-900 font-black shadow-lg text-lg">
+            BO
+          </div>
+          <div>
+            <h1 class="text-base sm:text-lg font-bold text-white leading-tight flex items-center gap-2">
+              BizOps Hub
+              <span id="sync-badge" class="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                <i class="fa-solid fa-hard-drive text-[10px]"></i> Local Mode
+              </span>
+            </h1>
+            <p class="text-xs text-slate-400 hidden sm:block">Central Operations & Inter-Departmental Tracking</p>
+          </div>
         </div>
 
-        <nav class="hidden md:flex items-center space-x-1 bg-slate-950/60 p-1.5 rounded-xl border border-slate-800">
-            <button onclick="switchView('kanban')" id="nav-kanban" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-blue-600 text-white shadow-sm">
-                <i class="fa-solid fa-kanban-board mr-1.5"></i>Master Kanban
-            </button>
-            <button onclick="switchView('swimlanes')" id="nav-swimlanes" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
-                <i class="fa-solid fa-table-cells mr-1.5"></i>Swimlanes
-            </button>
-            <button onclick="switchView('standup')" id="nav-standup" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all flex items-center">
-                <i class="fa-solid fa-stopwatch mr-1.5 text-amber-400"></i>Standup Triage
-                <span id="standup-badge" class="ml-1.5 px-1.5 py-0.2 text-[10px] bg-red-500/20 text-red-400 rounded-full font-bold border border-red-500/30">0</span>
-            </button>
-            <button onclick="switchView('sop')" id="nav-sop" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all">
-                <i class="fa-solid fa-book-bookmark mr-1.5 text-emerald-400"></i>SOP & Operating Guide
-            </button>
-        </nav>
-
-        <div class="flex items-center space-x-3">
-            <!-- 10-min Standup Timer Widget -->
-            <div id="timer-widget" class="flex items-center bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs">
-                <i class="fa-solid fa-clock text-amber-400 mr-2 animate-pulse"></i>
-                <span id="timer-display" class="font-mono font-bold text-slate-200 mr-2">10:00</span>
-                <button onclick="toggleTimer()" id="timer-btn" class="text-xs text-slate-400 hover:text-white transition">
-                    <i class="fa-solid fa-play" id="timer-icon"></i>
-                </button>
-                <button onclick="resetTimer()" class="text-xs text-slate-500 hover:text-slate-300 ml-1.5 transition">
-                    <i class="fa-solid fa-rotate-right"></i>
-                </button>
-            </div>
-
-            <!-- Live Sync Status Indicator & Config Button -->
-            <button onclick="openModal('modal-sync')" id="sync-status-btn" class="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg px-3 py-1.5 text-xs transition">
-                <span id="sync-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-                <span id="sync-text" class="text-slate-300 font-medium">Connecting Sync...</span>
-            </button>
-
-            <button onclick="openNewTicketModal()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-md hover:shadow-blue-500/20 transition flex items-center">
-                <i class="fa-solid fa-plus mr-1.5"></i>New Request
-            </button>
+        <!-- Action Buttons (Desktop & Tablet) -->
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="toggleStandupMode()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow transition flex items-center gap-1.5">
+            <i class="fa-solid fa-stopwatch"></i> 10-Min Standup
+          </button>
+          <button onclick="openNewTicketModal()" class="px-3 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-semibold shadow transition flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> New Request
+          </button>
+          <button onclick="openConfigModal()" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-slate-600">
+            <i class="fa-solid fa-cloud"></i> Cloud Sync
+          </button>
+          <button onclick="openSOPModal()" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-medium transition flex items-center gap-1.5 border border-slate-600">
+            <i class="fa-solid fa-book-open"></i> SOP Guidelines
+          </button>
         </div>
-    </header>
 
-    <section id="toolbar" class="bg-slate-900/50 border-b border-slate-800/80 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
-        <div class="flex flex-wrap items-center gap-2">
-            <!-- Search -->
-            <div class="relative w-56">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500"></i>
-                <input type="text" id="search-input" onkeyup="applyFilters()" placeholder="Search title, ID or tags..." class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition">
-            </div>
+        <!-- Mobile Header Actions -->
+        <div class="flex items-center gap-2 md:hidden">
+          <button onclick="openNewTicketModal()" class="p-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-semibold shadow flex items-center gap-1">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+          <button onclick="toggleMobileMenu()" class="p-2.5 bg-slate-700 text-slate-200 rounded-lg border border-slate-600 text-sm">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+        </div>
 
-            <!-- Priority Filter -->
-            <select id="filter-priority" onchange="applyFilters()" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-slate-300 focus:outline-none focus:border-blue-500">
-                <option value="ALL">All Priorities</option>
-                <option value="P1">P1: Critical</option>
-                <option value="P2">P2: Standard</option>
-                <option value="P3">P3: Low</option>
+      </div>
+    </div>
+
+    <!-- Mobile Slide-down Menu -->
+    <div id="mobile-menu" class="hidden md:hidden bg-slate-800 border-b border-slate-700 px-4 py-3 space-y-2">
+      <button onclick="toggleStandupMode(); toggleMobileMenu();" class="w-full text-left px-3 py-2.5 bg-indigo-600/30 text-indigo-200 border border-indigo-500/40 rounded-lg text-xs font-semibold flex items-center gap-2">
+        <i class="fa-solid fa-stopwatch text-indigo-400"></i> Start 10-Min Daily Standup
+      </button>
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button onclick="openConfigModal(); toggleMobileMenu();" class="px-3 py-2 bg-slate-700 text-slate-200 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border border-slate-600">
+          <i class="fa-solid fa-cloud"></i> Cloud Sync
+        </button>
+        <button onclick="openSOPModal(); toggleMobileMenu();" class="px-3 py-2 bg-slate-700 text-slate-200 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 border border-slate-600">
+          <i class="fa-solid fa-book-open"></i> SOP Matrix
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- STANDUP TIMER BANNER (Hidden by default) -->
+  <div id="standup-banner" class="hidden bg-indigo-950 border-b border-indigo-700/60 py-3 px-4 shadow-inner">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-indigo-600 rounded-lg text-white font-mono text-lg font-bold min-w-[80px] text-center" id="standup-timer">
+          10:00
+        </div>
+        <div>
+          <h2 class="text-xs font-bold text-indigo-200 uppercase tracking-wider">10-Minute BizOps Standup Mode</h2>
+          <p class="text-xs text-indigo-300">Target: Review blockers & daily handoffs. Maximum 2 mins per coordinator.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <button id="timer-btn" onclick="toggleTimer()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-bold transition">
+          Start Timer
+        </button>
+        <button onclick="resetTimer()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-medium transition">
+          Reset
+        </button>
+        <button onclick="toggleStandupMode()" class="px-3 py-1.5 bg-slate-800 hover:bg-red-900/50 text-red-300 rounded text-xs font-medium transition">
+          Exit Mode
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP CONTAINER -->
+  <main class="flex-1 flex flex-col max-w-7xl w-full mx-auto p-3 sm:p-6 gap-4 overflow-hidden">
+
+    <!-- SEARCH & FILTER BAR -->
+    <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      
+      <!-- Search Input -->
+      <div class="relative flex-1">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        <input type="text" id="search-input" oninput="renderBoard()" placeholder="Search project, ticket, client, or tag..." 
+          class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-100 placeholder-slate-400 focus:outline-none focus:border-brand-500">
+      </div>
+
+      <!-- Department & Coordinator Filters -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+        <select id="filter-dept" onchange="renderBoard()" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500">
+          <option value="ALL">All Departments</option>
+          <option value="SALES">Sales</option>
+          <option value="TECH">Tech</option>
+          <option value="FINANCE">Finance</option>
+          <option value="ADMIN">Admin</option>
+          <option value="MARKETING">Marketing</option>
+        </select>
+
+        <select id="filter-coord" onchange="renderBoard()" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500">
+          <option value="ALL">All Coordinators</option>
+          <option value="SC1">Sales Coord 1</option>
+          <option value="SC2">Sales Coord 2</option>
+          <option value="TC">Tech Coord</option>
+        </select>
+
+        <button onclick="toggleBlockerFilter()" id="btn-filter-blockers" class="px-2.5 py-2 bg-slate-900 border border-slate-700 text-slate-300 rounded-lg text-xs font-medium whitespace-nowrap flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-triangle-exclamation text-red-400"></i> Blocked Only
+        </button>
+      </div>
+
+    </div>
+
+    <!-- MOBILE COLUMN NAV TAB BAR (Visible on small screens) -->
+    <div class="md:hidden flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+      <button onclick="setMobileActiveColumn('ALL')" id="mob-tab-ALL" class="mob-col-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-brand-600 text-white shadow">
+        All Columns
+      </button>
+      <button onclick="setMobileActiveColumn('BACKLOG')" id="mob-tab-BACKLOG" class="mob-col-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-800 text-slate-300 border border-slate-700">
+        1. Backlog
+      </button>
+      <button onclick="setMobileActiveColumn('INTAKE')" id="mob-tab-INTAKE" class="mob-col-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-800 text-slate-300 border border-slate-700">
+        2. Intake Verification
+      </button>
+      <button onclick="setMobileActiveColumn('IN_PROGRESS')" id="mob-tab-IN_PROGRESS" class="mob-col-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-800 text-slate-300 border border-slate-700">
+        3. In Progress
+      </button>
+      <button onclick="setMobileActiveColumn('BLOCKED')" id="mob-tab-BLOCKED" class="mob-col-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-800 text-slate-300 border border-slate-700">
+        4. Blocked / Pending
+      </button>
+      <button onclick="setMobileActiveColumn('DONE')" id="mob-tab-DONE" class="mob-col-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-800 text-slate-300 border border-slate-700">
+        5. Completed
+      </button>
+    </div>
+
+    <!-- KANBAN BOARD AREA -->
+    <div class="flex-1 overflow-x-auto overflow-y-auto pb-4">
+      <div id="board-container" class="flex md:grid md:grid-cols-5 gap-3 min-w-full md:min-w-0 h-full snap-x-mandatory">
+        <!-- Kanban Columns generated dynamically -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- NEW/EDIT TICKET MODAL -->
+  <div id="ticket-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-xl shadow-2xl my-auto overflow-hidden flex flex-col max-h-[90vh]">
+      
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-slate-700 flex items-center justify-between bg-slate-800/80 sticky top-0 z-10">
+        <h3 id="modal-title" class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-square-plus text-brand-500"></i> New BizOps Request
+        </h3>
+        <button onclick="closeTicketModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body Form -->
+      <form id="ticket-form" onsubmit="handleTicketFormSubmit(event)" class="p-5 space-y-4 overflow-y-auto flex-1">
+        <input type="hidden" id="ticket-id">
+
+        <!-- Title / Project Name -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Request Title / Project Name *</label>
+          <input type="text" id="form-title" required placeholder="e.g., Vertis North Site Access & PO Verification" 
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Source Dept -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Source Department *</label>
+            <select id="form-source-dept" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500">
+              <option value="SALES">Sales</option>
+              <option value="TECH">Tech</option>
+              <option value="FINANCE">Finance</option>
+              <option value="ADMIN">Admin</option>
+              <option value="MARKETING">Marketing</option>
             </select>
+          </div>
 
-            <!-- Originating Dept Filter -->
-            <select id="filter-dept" onchange="applyFilters()" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-slate-300 focus:outline-none focus:border-blue-500">
-                <option value="ALL">All Depts</option>
-                <option value="Sales">Sales</option>
-                <option value="Tech">Tech</option>
-                <option value="Finance">Finance</option>
-                <option value="Admin">Admin</option>
-                <option value="Marketing">Marketing</option>
+          <!-- Target Dept -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Target Department *</label>
+            <select id="form-target-dept" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500">
+              <option value="TECH">Tech</option>
+              <option value="FINANCE">Finance</option>
+              <option value="ADMIN">Admin</option>
+              <option value="SALES">Sales</option>
+              <option value="MARKETING">Marketing</option>
             </select>
+          </div>
+        </div>
 
-            <!-- Blocker Filter Checkbox -->
-            <label class="flex items-center space-x-1.5 cursor-pointer px-2.5 py-1.5 bg-slate-950 rounded-lg border border-slate-800 text-slate-300 hover:border-slate-700 transition">
-                <input type="checkbox" id="filter-blocked" onchange="applyFilters()" class="rounded border-slate-800 bg-slate-900 text-red-500 focus:ring-0 focus:ring-offset-0">
-                <span>Blocked Only</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Assigned Coordinator -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Assigned Coordinator *</label>
+            <select id="form-coordinator" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500">
+              <option value="SC1">Sales Coordinator 1</option>
+              <option value="SC2">Sales Coordinator 2</option>
+              <option value="TC">Tech Coordinator</option>
+            </select>
+          </div>
+
+          <!-- SLA Priority -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">SLA Priority *</label>
+            <select id="form-priority" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500">
+              <option value="P1">P1 - Critical (4-8 Hrs)</option>
+              <option value="P2" selected>P2 - Standard (24 Hrs)</option>
+              <option value="P3">P3 - Low/Strategic (3-5 Days)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Description / Required Inputs -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Required Inputs / Request Details</label>
+          <textarea id="form-description" rows="3" placeholder="Provide contract link, PO number, or specifics per SOP guidelines..." 
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"></textarea>
+        </div>
+
+        <!-- Blocker Toggle & Blocker Reason -->
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700 space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-red-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-triangle-exclamation"></i> Flag as Active Blocker
             </label>
+            <input type="checkbox" id="form-is-blocked" onchange="toggleBlockerInput(this.checked)" class="w-4 h-4 accent-red-500 rounded">
+          </div>
+          <div id="blocker-reason-container" class="hidden">
+            <input type="text" id="form-blocker-reason" placeholder="State who/what is blocking (e.g., Waiting on Finance RFB clearance)" 
+              class="w-full bg-slate-950 border border-red-500/40 rounded-lg px-3 py-2 text-xs text-red-200 placeholder-red-900/60 focus:outline-none focus:border-red-500">
+          </div>
         </div>
 
-        <!-- Metrics Quick Bar -->
-        <div class="flex items-center space-x-4 text-slate-400 text-xs">
-            <div>Total: <span id="metric-total" class="font-bold text-slate-200">0</span></div>
-            <div>P1 Critical: <span id="metric-p1" class="font-bold text-red-400">0</span></div>
-            <div>Blocked: <span id="metric-blocked" class="font-bold text-amber-400">0</span></div>
-            <div>SLA Compliance: <span id="metric-sla" class="font-bold text-emerald-400">96%</span></div>
-        </div>
-    </section>
+      </form>
 
-    <main class="flex-1 overflow-hidden relative">
+      <!-- Modal Footer -->
+      <div class="px-5 py-3 bg-slate-900 border-t border-slate-700 flex items-center justify-end gap-2 sticky bottom-0 z-10">
+        <button type="button" onclick="closeTicketModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition">
+          Cancel
+        </button>
+        <button type="button" onclick="document.getElementById('ticket-form').requestSubmit()" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold shadow transition">
+          Save Ticket
+        </button>
+      </div>
 
-        <!-- VIEW 1: MASTER KANBAN BOARD -->
-        <div id="view-kanban" class="view-panel h-full p-6 overflow-x-auto overflow-y-hidden">
-            <div class="flex gap-4 h-full min-w-max">
-                
-                <!-- Column 1: Intake / Unassigned -->
-                <div class="w-80 flex flex-col bg-slate-900/60 rounded-xl border border-slate-800/80 overflow-hidden">
-                    <div class="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
-                        <div class="flex items-center space-x-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-                            <h3 class="font-semibold text-sm text-slate-200">1. Intake / Unassigned</h3>
-                        </div>
-                        <span id="count-stage-1" class="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-400">0</span>
-                    </div>
-                    <div id="col-stage-1" ondrop="dropTicket(event, '1. Intake / Unassigned')" ondragover="allowDrop(event)" class="flex-1 p-3 overflow-y-auto space-y-3">
-                        <!-- Cards dynamically rendered -->
-                    </div>
-                </div>
-
-                <!-- Column 2: Triage & Review -->
-                <div class="w-80 flex flex-col bg-slate-900/60 rounded-xl border border-slate-800/80 overflow-hidden">
-                    <div class="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
-                        <div class="flex items-center space-x-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                            <h3 class="font-semibold text-sm text-slate-200">2. Triage & Review</h3>
-                        </div>
-                        <span id="count-stage-2" class="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-400">0</span>
-                    </div>
-                    <div id="col-stage-2" ondrop="dropTicket(event, '2. Triage & Review')" ondragover="allowDrop(event)" class="flex-1 p-3 overflow-y-auto space-y-3">
-                        <!-- Cards dynamically rendered -->
-                    </div>
-                </div>
-
-                <!-- Column 3: In Progress -->
-                <div class="w-80 flex flex-col bg-slate-900/60 rounded-xl border border-slate-800/80 overflow-hidden">
-                    <div class="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
-                        <div class="flex items-center space-x-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                            <h3 class="font-semibold text-sm text-slate-200">3. In Progress</h3>
-                        </div>
-                        <span id="count-stage-3" class="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-400">0</span>
-                    </div>
-                    <div id="col-stage-3" ondrop="dropTicket(event, '3. In Progress')" ondragover="allowDrop(event)" class="flex-1 p-3 overflow-y-auto space-y-3">
-                        <!-- Cards dynamically rendered -->
-                    </div>
-                </div>
-
-                <!-- Column 4: Pending Sign-off -->
-                <div class="w-80 flex flex-col bg-slate-900/60 rounded-xl border border-slate-800/80 overflow-hidden">
-                    <div class="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
-                        <div class="flex items-center space-x-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-                            <h3 class="font-semibold text-sm text-slate-200">4. Pending Sign-off</h3>
-                        </div>
-                        <span id="count-stage-4" class="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-400">0</span>
-                    </div>
-                    <div id="col-stage-4" ondrop="dropTicket(event, '4. Pending Sign-off')" ondragover="allowDrop(event)" class="flex-1 p-3 overflow-y-auto space-y-3">
-                        <!-- Cards dynamically rendered -->
-                    </div>
-                </div>
-
-                <!-- Column 5: Completed / Closed -->
-                <div class="w-80 flex flex-col bg-slate-900/60 rounded-xl border border-slate-800/80 overflow-hidden">
-                    <div class="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
-                        <div class="flex items-center space-x-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                            <h3 class="font-semibold text-sm text-slate-200">5. Completed / Closed</h3>
-                        </div>
-                        <span id="count-stage-5" class="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-800 text-slate-400">0</span>
-                    </div>
-                    <div id="col-stage-5" ondrop="dropTicket(event, '5. Completed / Closed')" ondragover="allowDrop(event)" class="flex-1 p-3 overflow-y-auto space-y-3">
-                        <!-- Cards dynamically rendered -->
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <div id="view-swimlanes" class="view-panel hidden h-full p-6 overflow-y-auto">
-            <div class="max-w-7xl mx-auto space-y-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-lg font-bold text-white">Departmental Swimlanes</h2>
-                        <p class="text-xs text-slate-400">Cross-departmental handoffs grouped by Target Department</p>
-                    </div>
-                </div>
-                <div id="swimlane-container" class="space-y-4">
-                    <!-- Dynamic Swimlanes populated by JS -->
-                </div>
-            </div>
-        </div>
-
-        <div id="view-standup" class="view-panel hidden h-full p-6 overflow-y-auto">
-            <div class="max-w-7xl mx-auto space-y-6">
-                <!-- Standup Header Banner -->
-                <div class="p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-blue-500/10 border border-amber-500/20 flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <div class="flex items-center space-x-2">
-                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">09:00 AM Standup Protocol</span>
-                            <span class="text-xs text-slate-400">Facilitator: BizOps Coordinator</span>
-                        </div>
-                        <h2 class="text-xl font-bold text-white mt-1">10-Minute Daily Standup & Triage View</h2>
-                        <p class="text-xs text-slate-300 mt-0.5">Strict focus on P1 Criticals, Blocked Requests, and SLA Breaches &lt;2 hours.</p>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <button onclick="startStandupSession()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition shadow-lg shadow-amber-500/10 flex items-center">
-                            <i class="fa-solid fa-play mr-2"></i>Start Standup Timer
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Standup 4-Stage Focus Agenda Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
-                        <div class="text-xs text-slate-400 font-semibold mb-1">Step 1 (0-2m)</div>
-                        <div class="font-bold text-sm text-red-400 flex items-center justify-between">
-                            <span>P1 Critical Review</span>
-                            <i class="fa-solid fa-triangle-exclamation"></i>
-                        </div>
-                        <p class="text-[11px] text-slate-400 mt-2">Active client projects halted or immediate revenue risk.</p>
-                    </div>
-
-                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
-                        <div class="text-xs text-slate-400 font-semibold mb-1">Step 2 (2-6m)</div>
-                        <div class="font-bold text-sm text-amber-400 flex items-center justify-between">
-                            <span>Blockers & Escalations</span>
-                            <i class="fa-solid fa-ban"></i>
-                        </div>
-                        <p class="text-[11px] text-slate-400 mt-2">All cards in Stage 3b or flagged with internal/client blockers.</p>
-                    </div>
-
-                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
-                        <div class="text-xs text-slate-400 font-semibold mb-1">Step 3 (6-8m)</div>
-                        <div class="font-bold text-sm text-blue-400 flex items-center justify-between">
-                            <span>Unassigned Intake Triage</span>
-                            <i class="fa-solid fa-inbox"></i>
-                        </div>
-                        <p class="text-[11px] text-slate-400 mt-2">Assign incoming P2/P3 tickets in Stage 1 to coordinators.</p>
-                    </div>
-
-                    <div class="p-4 rounded-xl bg-slate-900 border border-slate-800">
-                        <div class="text-xs text-slate-400 font-semibold mb-1">Step 4 (8-10m)</div>
-                        <div class="font-bold text-sm text-purple-400 flex items-center justify-between">
-                            <span>SLA Risk Check</span>
-                            <i class="fa-solid fa-hourglass-half"></i>
-                        </div>
-                        <p class="text-[11px] text-slate-400 mt-2">Items expiring within 24 hours requiring immediate nudge.</p>
-                    </div>
-                </div>
-
-                <!-- Standup Filtered Cards Section -->
-                <div class="space-y-4">
-                    <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center">
-                        <i class="fa-solid fa-fire text-red-500 mr-2"></i>Action Items Requiring Standup Discussion
-                    </h3>
-                    <div id="standup-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <!-- Dynamic Standup Cards -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="view-sop" class="view-panel hidden h-full p-6 overflow-y-auto">
-            <div class="max-w-5xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-8 space-y-8 text-slate-300 text-sm leading-relaxed">
-                <div class="border-b border-slate-800 pb-6 flex items-center justify-between">
-                    <div>
-                        <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">Official Operating Document</span>
-                        <h1 class="text-2xl font-bold text-white mt-2">Central Ops Board Architecture & SOP</h1>
-                        <p class="text-xs text-slate-400">BizOps Inter-Departmental Coordination Protocol</p>
-                    </div>
-                    <button onclick="window.print()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg transition flex items-center">
-                        <i class="fa-solid fa-print mr-1.5"></i>Print Guide
-                    </button>
-                </div>
-
-                <!-- Section 1 -->
-                <section class="space-y-3">
-                    <h2 class="text-base font-bold text-white flex items-center">
-                        <span class="w-6 h-6 rounded-md bg-blue-600 text-white flex items-center justify-center text-xs mr-2">1</span>
-                        Golden Rule & Core Purpose
-                    </h2>
-                    <blockquote class="p-4 rounded-xl bg-amber-500/10 border-l-4 border-amber-500 text-amber-200 text-xs italic">
-                        <strong>The Golden Rule:</strong> All requests/project handoffs must be documented and coursed through official email correspondence (bizops.mcps@gmail.com) or logged on the Central Ops Board for it to be queued or acted upon by BizOps.
-                    </blockquote>
-                </section>
-
-                <!-- Section 2 -->
-                <section class="space-y-3">
-                    <h2 class="text-base font-bold text-white flex items-center">
-                        <span class="w-6 h-6 rounded-md bg-blue-600 text-white flex items-center justify-center text-xs mr-2">2</span>
-                        Service Level Agreements (SLAs) & Priority Matrix
-                    </h2>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs border-collapse">
-                            <thead>
-                                <tr class="border-b border-slate-800 text-slate-400">
-                                    <th class="p-2.5 font-semibold">Priority</th>
-                                    <th class="p-2.5 font-semibold">Criteria</th>
-                                    <th class="p-2.5 font-semibold">Initial Response</th>
-                                    <th class="p-2.5 font-semibold">Resolution SLA</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-800/60">
-                                <tr>
-                                    <td class="p-2.5 font-bold text-red-400">P1: Critical / Blocker</td>
-                                    <td class="p-2.5">Active client project halted, safety/legal issue, immediate revenue at risk.</td>
-                                    <td class="p-2.5">Within 1 Hour</td>
-                                    <td class="p-2.5 font-mono">4–8 Hours</td>
-                                </tr>
-                                <tr>
-                                    <td class="p-2.5 font-bold text-amber-400">P2: Standard</td>
-                                    <td class="p-2.5">Routine contract filing, invoicing triggers, logistics scheduling (&gt;48h out).</td>
-                                    <td class="p-2.5">Within 4 Hours</td>
-                                    <td class="p-2.5 font-mono">24 Hours</td>
-                                </tr>
-                                <tr>
-                                    <td class="p-2.5 font-bold text-blue-400">P3: Low / Strategic</td>
-                                    <td class="p-2.5">Case study outreach, non-urgent data requests, future campaign alignment.</td>
-                                    <td class="p-2.5">Within 1 Business Day</td>
-                                    <td class="p-2.5 font-mono">3–5 Business Days</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <!-- Section 3 -->
-                <section class="space-y-3">
-                    <h2 class="text-base font-bold text-white flex items-center">
-                        <span class="w-6 h-6 rounded-md bg-blue-600 text-white flex items-center justify-center text-xs mr-2">3</span>
-                        Standard Workflow Lifecycle
-                    </h2>
-                    <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-blue-400 flex flex-wrap items-center justify-between gap-2">
-                        <span>[1. Intake]</span> &rarr;
-                        <span>[2. Triage & Review]</span> &rarr;
-                        <span>[3. In Progress]</span> &rarr;
-                        <span>[4. Pending Sign-off]</span> &rarr;
-                        <span class="text-emerald-400">[5. Completed / Closed]</span>
-                    </div>
-                </section>
-            </div>
-        </div>
-
-    </main>
-
-    <div id="modal-ticket" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
-            <div class="p-5 border-b border-slate-800 flex items-center justify-between sticky top-0 bg-slate-900 z-10">
-                <div class="flex items-center space-x-3">
-                    <span id="modal-ticket-id" class="px-2.5 py-1 bg-slate-800 text-blue-400 rounded-md font-mono text-xs font-bold">BIZ-00000</span>
-                    <span id="modal-priority-badge" class="px-2.5 py-1 rounded-md text-xs font-bold">P2 Standard</span>
-                </div>
-                <button onclick="closeModal('modal-ticket')" class="text-slate-400 hover:text-white text-lg">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <div class="p-6 space-y-5 text-xs text-slate-300">
-                <div>
-                    <label class="block text-slate-400 text-[11px] uppercase font-bold mb-1">Request Title</label>
-                    <input type="text" id="modal-title" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-semibold focus:outline-none focus:border-blue-500 text-sm">
-                </div>
-
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-slate-400 text-[11px] uppercase font-bold mb-1">Stage</label>
-                        <select id="modal-stage" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none">
-                            <option value="1. Intake / Unassigned">1. Intake / Unassigned</option>
-                            <option value="2. Triage & Review">2. Triage & Review</option>
-                            <option value="3. In Progress">3. In Progress</option>
-                            <option value="4. Pending Sign-off">4. Pending Sign-off</option>
-                            <option value="5. Completed / Closed">5. Completed / Closed</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-slate-400 text-[11px] uppercase font-bold mb-1">Originating Dept</label>
-                        <select id="modal-origin" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none">
-                            <option value="Sales">Sales</option>
-                            <option value="Tech">Tech</option>
-                            <option value="Finance">Finance</option>
-                            <option value="Admin">Admin</option>
-                            <option value="Marketing">Marketing</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-slate-400 text-[11px] uppercase font-bold mb-1">Target Dept</label>
-                        <select id="modal-target" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none">
-                            <option value="Tech">Tech</option>
-                            <option value="Finance">Finance</option>
-                            <option value="Admin">Admin</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="Sales">Sales</option>
-                            <option value="BizOps">BizOps</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-slate-400 text-[11px] uppercase font-bold mb-1">Assignee</label>
-                        <input type="text" id="modal-assignee" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200">
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 text-[11px] uppercase font-bold mb-1">Priority Level</label>
-                        <select id="modal-priority" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200">
-                            <option value="P1">P1: Critical (4-8h SLA)</option>
-                            <option value="P2">P2: Standard (24h SLA)</option>
-                            <option value="P3">P3: Low (3-5 Days SLA)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Blocker Status Toggle -->
-                <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                    <label class="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" id="modal-blocked-check" class="rounded border-slate-800 bg-slate-900 text-amber-500">
-                        <span class="font-bold text-amber-400">Flag as Blocked / Escalated</span>
-                    </label>
-                    <input type="text" id="modal-blocker-note" placeholder="Specify blocker reason & required action..." class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-slate-300">
-                </div>
-
-                <!-- Required Inputs Checklist -->
-                <div>
-                    <label class="block text-slate-400 text-[11px] uppercase font-bold mb-2">Required Inputs Checklist</label>
-                    <div id="modal-checklist" class="space-y-2">
-                        <!-- Checkbox items inserted dynamically -->
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-4 border-t border-slate-800 bg-slate-900 flex items-center justify-between sticky bottom-0">
-                <button onclick="deleteCurrentTicket()" class="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 transition">
-                    <i class="fa-solid fa-trash mr-1"></i>Delete Request
-                </button>
-                <div class="flex space-x-2">
-                    <button onclick="closeModal('modal-ticket')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg transition">Cancel</button>
-                    <button onclick="saveTicketChanges()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition shadow-lg shadow-blue-500/20">Save Changes</button>
-                </div>
-            </div>
-        </div>
     </div>
+  </div>
 
-    <div id="modal-new" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-            <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900">
-                <div class="flex items-center space-x-2">
-                    <i class="fa-solid fa-circle-plus text-blue-500"></i>
-                    <h3 class="font-bold text-sm text-white">Log New BizOps Request</h3>
-                </div>
-                <button onclick="closeModal('modal-new')" class="text-slate-400 hover:text-white">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <form onsubmit="handleNewTicketSubmit(event)" class="p-6 space-y-4 text-xs">
-                <div>
-                    <label class="block text-slate-400 font-semibold mb-1">Request Title *</label>
-                    <input type="text" id="new-title" required placeholder="e.g. Site Access Permit - Vertis North Project" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500">
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-slate-400 font-semibold mb-1">Originating Department</label>
-                        <select id="new-origin" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-300">
-                            <option value="Sales">Sales</option>
-                            <option value="Tech">Tech</option>
-                            <option value="Finance">Finance</option>
-                            <option value="Admin">Admin</option>
-                            <option value="Marketing">Marketing</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-slate-400 font-semibold mb-1">Target Department</label>
-                        <select id="new-target" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-300">
-                            <option value="Tech">Tech</option>
-                            <option value="Admin">Admin</option>
-                            <option value="Finance">Finance</option>
-                            <option value="Sales">Sales</option>
-                            <option value="Marketing">Marketing</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-slate-400 font-semibold mb-1">Priority Level</label>
-                        <select id="new-priority" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-300">
-                            <option value="P2">P2: Standard (24h)</option>
-                            <option value="P1">P1: Critical (4-8h)</option>
-                            <option value="P3">P3: Low (3-5 Days)</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-slate-400 font-semibold mb-1">Assigned Coordinator</label>
-                        <select id="new-assignee" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-300">
-                            <option value="Sales Coordinator 1">Sales Coordinator 1</option>
-                            <option value="Sales Coordinator 2">Sales Coordinator 2</option>
-                            <option value="Tech Coordinator">Tech Coordinator</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-slate-400 font-semibold mb-1">Required Checklist Items (comma separated)</label>
-                    <input type="text" id="new-checklist" placeholder="e.g. Signed Agreement, COCA Form, PO Copy" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white">
-                </div>
-
-                <div class="flex justify-end space-x-2 pt-4 border-t border-slate-800">
-                <button type="button" onclick="closeModal('modal-new')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold shadow-lg shadow-blue-500/20">Submit Request</button>
-            </div>
-        </form>
+  <!-- TAP-TO-MOVE MODAL FOR MOBILE -->
+  <div id="move-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <h3 class="text-sm font-bold text-white">Move Ticket Stage</h3>
+        <button onclick="closeMoveModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <input type="hidden" id="move-ticket-id">
+      <div class="space-y-2" id="move-modal-options">
+        <!-- Rendered dynamically -->
+      </div>
     </div>
-</div>
+  </div>
 
-<!-- Cloud Sync Settings Modal -->
-<div id="modal-sync" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 hidden p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-        <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900">
-            <div class="flex items-center space-x-2">
-                <i class="fa-solid fa-cloud text-blue-500"></i>
-                <h3 class="font-bold text-sm text-white">Cloud Real-Time Sync Settings</h3>
-            </div>
-            <button onclick="closeModal('modal-sync')" class="text-slate-400 hover:text-white">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+  <!-- CLOUD SYNC CONFIG MODAL -->
+  <div id="config-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden my-auto">
+      <div class="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-cloud text-indigo-400"></i> Firebase Real-Time Cloud Sync
+        </h3>
+        <button onclick="closeConfigModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-5 space-y-3">
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Paste your Firebase Project Configuration snippet below to enable real-time collaborative updates across all devices.
+        </p>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Firebase Config Snippet / JSON</label>
+          <textarea id="config-json-input" rows="6" placeholder='const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "..." };' 
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 font-mono text-xs text-emerald-400 placeholder-slate-600 focus:outline-none focus:border-brand-500"></textarea>
         </div>
-
-        <div class="p-6 space-y-4 text-xs text-slate-300">
-            <p>To enable real-time collaborative editing across team members on Netlify or GitHub Pages, paste your Firebase project configuration JSON below. In preview mode, sync is automatic!</p>
-            
-            <div>
-                <label class="block text-slate-400 font-semibold mb-1">Firebase Configuration JSON</label>
-                <textarea id="firebase-config-input" rows="6" placeholder='{\n  "apiKey": "AIzaSy...",\n  "authDomain": "your-app.firebaseapp.com",\n  "projectId": "your-app",\n  "storageBucket": "your-app.appspot.com",\n  "messagingSenderId": "...",\n  "appId": "..."\n}' class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 font-mono text-slate-200 text-[11px] focus:outline-none focus:border-blue-500"></textarea>
-            </div>
-
-            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
-                <div class="font-semibold text-white">How to get this config (Free in 2 mins):</div>
-                <ol class="list-decimal list-inside space-y-1">
-                    <li>Go to <a href="https://console.firebase.google.com" target="_blank" class="text-blue-400 underline">console.firebase.google.com</a> and create a free project.</li>
-                    <li>Add a Web App and enable <strong>Firestore Database</strong> (Test mode).</li>
-                    <li>Copy the <code class="text-amber-300">firebaseConfig</code> object and paste it above.</li>
-                </ol>
-            </div>
+        <div id="config-error" class="hidden p-2.5 bg-red-950/60 border border-red-500/40 text-red-300 text-xs rounded-lg"></div>
+      </div>
+      <div class="px-5 py-3 bg-slate-900 border-t border-slate-700 flex items-center justify-between">
+        <button onclick="clearFirebaseConfig()" class="text-xs text-red-400 hover:underline">
+          Disconnect Cloud
+        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="closeConfigModal()" class="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-xs font-medium">Cancel</button>
+          <button onclick="saveFirebaseConfig()" class="px-4 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold shadow">Save & Sync</button>
         </div>
-
-        <div class="p-4 border-t border-slate-800 bg-slate-900 flex justify-end space-x-2">
-            <button onclick="closeModal('modal-sync')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold">Cancel</button>
-            <button onclick="saveFirebaseCustomConfig()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold shadow-lg shadow-blue-500/20">Save & Connect</button>
-        </div>
+      </div>
     </div>
-</div>
+  </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <!-- SOP GUIDELINES MODAL -->
+  <div id="sop-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-3xl h-[85vh] shadow-2xl flex flex-col overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-700 flex items-center justify-between bg-slate-800">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-book-open text-brand-500"></i> BizOps SOP Inter-Departmental Matrix
+        </h3>
+        <button onclick="closeSOPModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-5 overflow-y-auto space-y-4 text-xs text-slate-300 leading-relaxed flex-1">
+        
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700">
+          <h4 class="font-bold text-brand-400 text-xs uppercase tracking-wider mb-1">Golden Rule</h4>
+          <p>All cross-departmental requests and project handoffs must be documented and coursed through official email correspondence & platforms to be queued or acted upon by BizOps or tracked on this board.</p>
+        </div>
 
-    // Global variables provided by Canvas or fallback
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'central-ops-board-app';
-    let db = null;
-    let auth = null;
-    let currentUser = null;
+        <div>
+          <h4 class="font-bold text-white text-sm mb-2 border-b border-slate-700 pb-1">Priority SLAs</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div class="p-2.5 bg-slate-900 rounded-lg border border-red-500/30">
+              <span class="font-bold text-red-400 block">P1: Critical (4-8 Hrs)</span>
+              <span>Client project halted, immediate revenue risk.</span>
+            </div>
+            <div class="p-2.5 bg-slate-900 rounded-lg border border-amber-500/30">
+              <span class="font-bold text-amber-400 block">P2: Standard (24 Hrs)</span>
+              <span>Routine contracts, billing triggers, site access.</span>
+            </div>
+            <div class="p-2.5 bg-slate-900 rounded-lg border border-blue-500/30">
+              <span class="font-bold text-blue-400 block">P3: Low (3-5 Days)</span>
+              <span>Case studies, non-urgent data requests.</span>
+            </div>
+          </div>
+        </div>
 
-    // Default initial data if database is empty
-    const initialDefaultTickets = [
-        {
-            id: 'BIZ-00101',
-            title: 'Site Access Permits & Vehicle Dispatch - Vertis North',
-            stage: '3. In Progress',
-            origin: 'Tech',
-            target: 'Admin',
-            assignee: 'Tech Coordinator',
-            priority: 'P1',
-            slaDeadline: '2026-07-28T18:00:00',
-            isBlocked: true,
-            blockerNote: 'Waiting on client safety officer approval for gate pass',
-            checklist: [
-                { text: 'Tech Team Roster Submitted', done: true },
-                { text: 'Equipment Manifest Verified', done: true },
-                { text: 'Client Gate Pass Sign-off', done: false }
-            ]
-        },
-        {
-            id: 'BIZ-00102',
-            title: 'Request For Billing (RFB) - Milestone 2 Completion',
-            stage: '4. Pending Sign-off',
-            origin: 'Tech',
-            target: 'Finance',
-            assignee: 'Sales Coordinator 1',
-            priority: 'P2',
-            slaDeadline: '2026-07-29T12:00:00',
-            isBlocked: false,
-            blockerNote: '',
-            checklist: [
-                { text: 'Signed COCA Attached', done: true },
-                { text: 'Project Milestone Documentation', done: true }
-            ]
-        },
-        {
-            id: 'BIZ-00103',
-            title: 'Non-Standard BOQ Feasibility Review - Project Titan',
-            stage: '2. Triage & Review',
-            origin: 'Sales',
-            target: 'Tech',
-            assignee: 'Tech Coordinator',
-            priority: 'P1',
-            slaDeadline: '2026-07-28T16:30:00',
-            isBlocked: false,
-            blockerNote: '',
-            checklist: [
-                { text: 'Client Scope Brief', done: true },
-                { text: 'Budget & Timeline Outline', done: true },
-                { text: 'Tech Sanity Check', done: false }
-            ]
-        },
-        {
-            id: 'BIZ-00104',
-            title: 'Performance Bond Policy Execution',
-            stage: '1. Intake / Unassigned',
-            origin: 'BizOps',
-            target: 'Admin',
-            assignee: 'Sales Coordinator 2',
-            priority: 'P2',
-            slaDeadline: '2026-07-30T10:00:00',
-            isBlocked: false,
-            blockerNote: '',
-            checklist: [
-                { text: 'Contract Value Verified', done: true },
-                { text: 'Bond Type % Form', done: false }
-            ]
-        },
-        {
-            id: 'BIZ-00105',
-            title: 'Q3 Client Case Study Consent & Performance Data',
-            stage: '3. In Progress',
-            origin: 'Marketing',
-            target: 'Sales',
-            assignee: 'Sales Coordinator 2',
-            priority: 'P3',
-            slaDeadline: '2026-08-01T17:00:00',
-            isBlocked: false,
-            blockerNote: '',
-            checklist: [
-                { text: 'Target Client Selected', done: true },
-                { text: 'Client Interview Consent', done: false }
-            ]
-        },
-        {
-            id: 'BIZ-00106',
-            title: 'Subcontractor Progress Payment Validation',
-            stage: '5. Completed / Closed',
-            origin: 'Finance',
-            target: 'Tech',
-            assignee: 'Tech Coordinator',
-            priority: 'P2',
-            slaDeadline: '2026-07-27T15:00:00',
-            isBlocked: false,
-            blockerNote: '',
-            checklist: [
-                { text: 'Vendor Invoice Attached', done: true },
-                { text: 'Tech Lead Sign-off', done: true }
-            ]
-        }
+        <div>
+          <h4 class="font-bold text-white text-sm mb-2 border-b border-slate-700 pb-1">Inter-Departmental Handoffs</h4>
+          <ul class="space-y-2">
+            <li class="bg-slate-900 p-2.5 rounded-lg border border-slate-700">
+              <strong class="text-emerald-400">Sales → BizOps:</strong> Signed Agreement, Client Contacts, Commercial Terms, Scope Brief.
+            </li>
+            <li class="bg-slate-900 p-2.5 rounded-lg border border-slate-700">
+              <strong class="text-blue-400">BizOps → Tech:</strong> Technical Specs check, Resource assignment, GANTT Chart within 24h.
+            </li>
+            <li class="bg-slate-900 p-2.5 rounded-lg border border-slate-700">
+              <strong class="text-amber-400">BizOps → Finance:</strong> Deposit invoice trigger, PO verification, Milestone billing clearance.
+            </li>
+            <li class="bg-slate-900 p-2.5 rounded-lg border border-slate-700">
+              <strong class="text-purple-400">BizOps → Admin:</strong> Contracts/NDAs filing, Site Access Permits, Bonds (Surety/Performance/Retention), Accreditation.
+            </li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // --- BOARD COLUMNS SPECIFICATION ---
+    const COLUMNS = [
+      { id: 'BACKLOG', title: '1. Backlog', color: 'border-slate-600', badgeBg: 'bg-slate-700' },
+      { id: 'INTAKE', title: '2. Intake Verification', color: 'border-blue-500', badgeBg: 'bg-blue-600' },
+      { id: 'IN_PROGRESS', title: '3. In Progress', color: 'border-amber-500', badgeBg: 'bg-amber-600' },
+      { id: 'BLOCKED', title: '4. Blocked / Pending', color: 'border-red-500', badgeBg: 'bg-red-600' },
+      { id: 'DONE', title: '5. Completed', color: 'border-emerald-500', badgeBg: 'bg-emerald-600' }
     ];
 
-    let tickets = [...initialDefaultTickets];
-    let activeTicketId = null;
-    let standupTimerSeconds = 600;
-    let timerInterval = null;
+    // INITIAL DEMO DATA
+    const INITIAL_TICKETS = [
+      {
+        id: 'TICK-101',
+        title: 'Vertis North Site Access & PO Check',
+        sourceDept: 'SALES',
+        targetDept: 'ADMIN',
+        coordinator: 'SC1',
+        priority: 'P1',
+        columnId: 'BLOCKED',
+        description: 'Waiting on client safety permit clearance from Admin before Tech dispatch.',
+        isBlocked: true,
+        blockerReason: 'Awaiting Admin Permit Approval',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'TICK-102',
+        title: 'Network Switch BOQ & Tech Review',
+        sourceDept: 'SALES',
+        targetDept: 'TECH',
+        coordinator: 'TC',
+        priority: 'P2',
+        columnId: 'INTAKE',
+        description: 'Tech Coordinator verifying scope feasibility and resource availability.',
+        isBlocked: false,
+        blockerReason: '',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'TICK-103',
+        title: 'Milestone 2 RFB & Deposit Billing',
+        sourceDept: 'TECH',
+        targetDept: 'FINANCE',
+        coordinator: 'SC2',
+        priority: 'P2',
+        columnId: 'IN_PROGRESS',
+        description: 'COCA verified by TC. RFB submitted to Finance for client billing.',
+        isBlocked: false,
+        blockerReason: '',
+        createdAt: new Date().toISOString()
+      }
+    ];
 
-    async function initFirebase() {
+    // STATE MANAGEMENT
+    let tickets = [];
+    let db = null;
+    let isFirebaseActive = false;
+    let showBlockersOnly = false;
+    let mobileActiveColumn = 'ALL';
+    
+    // Standup Timer State
+    let standupTimerInterval = null;
+    let standupSeconds = 600;
+    let isTimerRunning = false;
+
+    // --- INITIALIZATION ---
+    window.addEventListener('DOMContentLoaded', () => {
+      initDatabase();
+      renderBoard();
+    });
+
+    // FLEXIBLE FIREBASE / LOCALSTORAGE INITIALIZATION
+    function initDatabase() {
+      const savedConfig = localStorage.getItem('bizops_firebase_config');
+      if (savedConfig) {
         try {
-            let configToUse = null;
-            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                configToUse = JSON.parse(__firebase_config);
-            } else {
-                const savedConfig = localStorage.getItem('bizops_firebase_config');
-                if (savedConfig) {
-                    try { configToUse = JSON.parse(savedConfig); } catch(e) {}
-                }
-            }
-
-            if (!configToUse || !configToUse.apiKey) {
-                updateSyncStatus('local', 'Local Mode (Click to setup Cloud Sync)');
-                return;
-            }
-
-            const app = initializeApp(configToUse);
-            auth = getAuth(app);
-            db = getFirestore(app);
-
-            // Rule 3: Auth before queries
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUser = user;
-                    setupRealtimeListener();
-                }
-            });
+          const configObj = parseConfigFlexible(savedConfig);
+          if (!firebase.apps.length) {
+            firebase.initializeApp(configObj);
+          }
+          db = firebase.firestore();
+          isFirebaseActive = true;
+          updateSyncBadge(true);
+          listenToFirestore();
+          return;
         } catch (err) {
-            console.error("Firebase Initialization Error:", err);
-            updateSyncStatus('local', 'Local Mode (Click to setup Cloud Sync)');
+          console.warn('Firebase init error, falling back to LocalStorage:', err);
         }
+      }
+      
+      // Fallback to LocalStorage
+      updateSyncBadge(false);
+      const localData = localStorage.getItem('bizops_local_tickets');
+      if (localData) {
+        tickets = JSON.parse(localData);
+      } else {
+        tickets = INITIAL_TICKETS;
+        saveLocal();
+      }
+      renderBoard();
     }
 
-    function setupRealtimeListener() {
-        if (!db || !currentUser) return;
-        // Rule 1: Public path structure
-        const ticketsCol = collection(db, 'artifacts', appId, 'public', 'data', 'tickets');
-
-        // Rule 2: Simple collection listener (no complex queries)
-        onSnapshot(ticketsCol, async (snapshot) => {
-            if (snapshot.empty) {
-                await seedInitialFirestoreData();
-                return;
-            }
-            let remoteTickets = [];
-            snapshot.forEach(docSnap => {
-                remoteTickets.push({ id: docSnap.id, ...docSnap.data() });
-            });
-            // Sort by ID in JS memory
-            tickets = remoteTickets.sort((a, b) => a.id.localeCompare(b.id));
-            renderKanban();
-            renderSwimlanes();
-            renderStandupView();
-            updateMetrics();
-            updateSyncStatus('live', 'Live Cloud Sync Active');
-        }, (error) => {
-            console.error("Firestore error callback:", error);
-            updateSyncStatus('error', 'Sync Disconnected');
+    function listenToFirestore() {
+      if (!db) return;
+      db.collection('tickets').onSnapshot(snapshot => {
+        tickets = [];
+        snapshot.forEach(doc => {
+          tickets.push({ id: doc.id, ...doc.data() });
         });
+        renderBoard();
+      }, err => {
+        console.error("Firestore listener error:", err);
+      });
     }
 
-    async function seedInitialFirestoreData() {
-        if (!db || !currentUser) return;
-        for (const ticket of initialDefaultTickets) {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'tickets', ticket.id);
-            await setDoc(docRef, ticket);
-        }
+    function saveLocal() {
+      localStorage.setItem('bizops_local_tickets', JSON.stringify(tickets));
     }
 
-    function updateSyncStatus(status, labelText) {
-        const dot = document.getElementById('sync-dot');
-        const text = document.getElementById('sync-text');
-        if (!dot || !text) return;
+    async function persistTicket(ticket) {
+      if (isFirebaseActive && db) {
+        await db.collection('tickets').doc(ticket.id).set(ticket);
+      } else {
+        const idx = tickets.findIndex(t => t.id === ticket.id);
+        if (idx >= 0) tickets[idx] = ticket;
+        else tickets.push(ticket);
+        saveLocal();
+        renderBoard();
+      }
+    }
 
-        text.textContent = labelText;
-        if (status === 'live') {
-            dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
-        } else if (status === 'local') {
-            dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400';
+    async function deleteTicket(id) {
+      if (confirm("Are you sure you want to delete this ticket?")) {
+        if (isFirebaseActive && db) {
+          await db.collection('tickets').doc(id).delete();
         } else {
-            dot.className = 'w-2.5 h-2.5 rounded-full bg-red-400';
+          tickets = tickets.filter(t => t.id !== id);
+          saveLocal();
+          renderBoard();
         }
+      }
     }
 
-    window.openModal = function(id) {
-        document.getElementById(id).classList.remove('hidden');
-        if (id === 'modal-sync') {
-            const saved = localStorage.getItem('bizops_firebase_config');
-            if (saved) document.getElementById('firebase-config-input').value = saved;
-        }
-    };
-
-    window.closeModal = function(id) {
-        document.getElementById(id).classList.add('hidden');
-    };
-
-    window.saveFirebaseCustomConfig = function() {
-        const val = document.getElementById('firebase-config-input').value.trim();
-        if (!val) {
-            localStorage.removeItem('bizops_firebase_config');
-            alert('Cloud configuration cleared. Running in local mode.');
-            location.reload();
-            return;
-        }
+    // ROBUST CONFIG PARSER (Accepts JS literal, JSON, or const declaration)
+    function parseConfigFlexible(rawText) {
+      if (!rawText) throw new Error("Config text is empty");
+      let text = rawText.trim();
+      text = text.replace(/^(const|let|var)\s+\w+\s*=\s*/i, '');
+      text = text.replace(/;$/, '');
+      try {
+        return JSON.parse(text);
+      } catch (e1) {
         try {
-            JSON.parse(val);
-            localStorage.setItem('bizops_firebase_config', val);
-            closeModal('modal-sync');
-            location.reload();
-        } catch(e) {
-            alert('Invalid JSON configuration format. Please check your syntax.');
+          let cleaned = text
+            .replace(/([{,]\s*)([a-zA-Z0-9_$]+)\s*:/g, '$1"$2":')
+            .replace(/'/g, '"');
+          return JSON.parse(cleaned);
+        } catch (e2) {
+          return new Function('return ' + text)();
         }
-    };
-
-    window.switchView = function(viewName) {
-        document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
-        document.querySelectorAll('.nav-btn').forEach(el => {
-            el.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
-            el.classList.add('text-slate-400');
-        });
-
-        const activeBtn = document.getElementById(`nav-${viewName}`);
-        const activeView = document.getElementById(`view-${viewName}`);
-
-        if (activeView && activeBtn) {
-            activeView.classList.remove('hidden');
-            activeBtn.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
-            activeBtn.classList.remove('text-slate-400');
-        }
-
-        if (viewName === 'swimlanes') renderSwimlanes();
-        if (viewName === 'standup') renderStandupView();
-    };
-
-    function renderKanban() {
-        const stages = [
-            '1. Intake / Unassigned',
-            '2. Triage & Review',
-            '3. In Progress',
-            '4. Pending Sign-off',
-            '5. Completed / Closed'
-        ];
-
-        const filtered = getFilteredTickets();
-
-        stages.forEach((stage, idx) => {
-            const colId = `col-stage-${idx + 1}`;
-            const countId = `count-stage-${idx + 1}`;
-            const container = document.getElementById(colId);
-            const countBadge = document.getElementById(countId);
-
-            const stageTickets = filtered.filter(t => t.stage === stage);
-            if (countBadge) countBadge.textContent = stageTickets.length;
-
-            if (container) {
-                container.innerHTML = stageTickets.map(t => createTicketCardHTML(t)).join('');
-            }
-        });
+      }
     }
 
-    function createTicketCardHTML(t) {
-        const priorityColors = {
-            'P1': 'bg-red-500/10 text-red-400 border-red-500/30',
-            'P2': 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-            'P3': 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-        };
+    function updateSyncBadge(isCloud) {
+      const badge = document.getElementById('sync-badge');
+      if (isCloud) {
+        badge.className = 'px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1';
+        badge.innerHTML = '<i class="fa-solid fa-cloud text-[10px]"></i> Live Cloud Sync';
+      } else {
+        badge.className = 'px-2 py-0.5 text-xs font-medium rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1';
+        badge.innerHTML = '<i class="fa-solid fa-hard-drive text-[10px]"></i> Local Mode';
+      }
+    }
 
-        const deptBadges = {
-            'Sales': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-            'Tech': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-            'Finance': 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-            'Admin': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-            'Marketing': 'bg-pink-500/10 text-pink-400 border-pink-500/20',
-            'BizOps': 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-        };
+    // --- RENDER KANBAN BOARD ---
+    function renderBoard() {
+      const container = document.getElementById('board-container');
+      const searchQuery = document.getElementById('search-input').value.toLowerCase();
+      const deptFilter = document.getElementById('filter-dept').value;
+      const coordFilter = document.getElementById('filter-coord').value;
 
-        const completedChecklist = t.checklist ? t.checklist.filter(c => c.done).length : 0;
-        const totalChecklist = t.checklist ? t.checklist.length : 0;
+      // Filter tickets
+      const filtered = tickets.filter(t => {
+        const matchesSearch = t.title.toLowerCase().includes(searchQuery) || 
+                              t.description.toLowerCase().includes(searchQuery) ||
+                              t.id.toLowerCase().includes(searchQuery);
+        const matchesDept = deptFilter === 'ALL' || t.sourceDept === deptFilter || t.targetDept === deptFilter;
+        const matchesCoord = coordFilter === 'ALL' || t.coordinator === coordFilter;
+        const matchesBlocker = !showBlockersOnly || t.isBlocked;
+        return matchesSearch && matchesDept && matchesCoord && matchesBlocker;
+      });
 
-        return `
-            <div draggable="true" ondragstart="dragStart(event, '${t.id}')" onclick="openTicketModal('${t.id}')" 
-                 class="group p-3.5 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer space-y-3 relative overflow-hidden">
-                
-                ${t.isBlocked ? `<div class="absolute top-0 right-0 w-2 h-full bg-amber-500"></div>` : ''}
+      container.innerHTML = '';
 
-                <div class="flex items-center justify-between text-[11px]">
-                    <span class="font-mono font-bold text-slate-400 group-hover:text-blue-400 transition">${t.id}</span>
-                    <span class="px-2 py-0.5 rounded-md font-bold border ${priorityColors[t.priority] || ''}">${t.priority}</span>
-                </div>
+      COLUMNS.forEach(col => {
+        const colTickets = filtered.filter(t => t.columnId === col.id);
+        const isHiddenMobile = mobileActiveColumn !== 'ALL' && mobileActiveColumn !== col.id;
 
-                <h4 class="font-semibold text-xs text-slate-200 line-clamp-2 group-hover:text-white transition leading-snug">${t.title}</h4>
+        const colEl = document.createElement('div');
+        colEl.className = `flex-1 min-w-[280px] md:min-w-0 bg-slate-800/60 rounded-xl border ${col.color} p-3 flex flex-col snap-column ${isHiddenMobile ? 'hidden md:flex' : 'flex'}`;
+        colEl.setAttribute('ondragover', 'allowDrop(event)');
+        colEl.setAttribute('ondrop', `handleDrop(event, '${col.id}')`);
 
-                ${t.isBlocked ? `
-                    <div class="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 flex items-start space-x-1.5">
-                        <i class="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i>
-                        <span class="line-clamp-1">${t.blockerNote || 'Blocked / Escalated'}</span>
-                    </div>
-                ` : ''}
-
-                <div class="flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-800/80 pt-2.5">
-                    <div class="flex items-center space-x-1">
-                        <span class="px-1.5 py-0.5 rounded border ${deptBadges[t.origin] || ''}">${t.origin}</span>
-                        <i class="fa-solid fa-arrow-right text-[8px] text-slate-600"></i>
-                        <span class="px-1.5 py-0.5 rounded border ${deptBadges[t.target] || ''}">${t.target}</span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        ${totalChecklist > 0 ? `<span><i class="fa-regular fa-square-check mr-1"></i>${completedChecklist}/${totalChecklist}</span>` : ''}
-                        <span class="text-slate-300"><i class="fa-solid fa-user-circle mr-1"></i>${t.assignee ? t.assignee.split(' ')[0] : 'Unassigned'}</span>
-                    </div>
-                </div>
-            </div>
+        colEl.innerHTML = `
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-700">
+            <h2 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+              ${col.title}
+            </h2>
+            <span class="${col.badgeBg} text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold">
+              ${colTickets.length}
+            </span>
+          </div>
+          <div class="flex-1 space-y-2 overflow-y-auto pr-1">
+            ${colTickets.length === 0 ? `
+              <div class="h-24 border border-dashed border-slate-700/60 rounded-lg flex items-center justify-center text-[11px] text-slate-500">
+                No requests
+              </div>
+            ` : colTickets.map(t => renderCardHtml(t)).join('')}
+          </div>
         `;
+        container.appendChild(colEl);
+      });
     }
 
-    window.allowDrop = function(ev) {
-        ev.preventDefault();
-    };
+    function renderCardHtml(t) {
+      const priorityClass = t.priority === 'P1' ? 'bg-red-500/20 text-red-300 border-red-500/40' :
+                            t.priority === 'P2' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+                            'bg-blue-500/20 text-blue-300 border-blue-500/40';
 
-    window.dragStart = function(ev, id) {
-        ev.dataTransfer.setData("text/plain", id);
-    };
+      return `
+        <div id="${t.id}" draggable="true" ondragstart="handleDragStart(event, '${t.id}')"
+          class="bg-slate-900 p-3 rounded-xl border ${t.isBlocked ? 'border-red-500/80 bg-red-950/10' : 'border-slate-700'} shadow-sm hover:border-slate-500 transition space-y-2 cursor-grab active:cursor-grabbing">
+          
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono text-slate-400">${t.id}</span>
+            <div class="flex items-center gap-1">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${priorityClass}">
+                ${t.priority}
+              </span>
+              <span class="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px] font-semibold border border-slate-700">
+                ${t.coordinator}
+              </span>
+            </div>
+          </div>
 
-    window.dropTicket = async function(ev, newStage) {
-        ev.preventDefault();
-        const id = ev.dataTransfer.getData("text/plain");
-        const ticket = tickets.find(t => t.id === id);
-        if (ticket) {
-            ticket.stage = newStage;
-            if (db && currentUser) {
-                const ticketRef = doc(db, 'artifacts', appId, 'public', 'data', 'tickets', ticket.id);
-                await updateDoc(ticketRef, { stage: newStage });
-            } else {
-                renderKanban();
-                renderSwimlanes();
-                updateMetrics();
-            }
-        }
-    };
+          <h3 class="text-xs font-bold text-white leading-snug">${escapeHtml(t.title)}</h3>
 
-    function getFilteredTickets() {
-        const search = document.getElementById('search-input').value.toLowerCase();
-        const priority = document.getElementById('filter-priority').value;
-        const dept = document.getElementById('filter-dept').value;
-        const blockedOnly = document.getElementById('filter-blocked').checked;
+          <div class="flex items-center gap-1.5 text-[10px]">
+            <span class="px-1.5 py-0.5 bg-indigo-950 text-indigo-300 rounded font-medium border border-indigo-800/40">
+              ${t.sourceDept}
+            </span>
+            <i class="fa-solid fa-arrow-right text-[8px] text-slate-500"></i>
+            <span class="px-1.5 py-0.5 bg-purple-950 text-purple-300 rounded font-medium border border-purple-800/40">
+              ${t.targetDept}
+            </span>
+          </div>
 
-        return tickets.filter(t => {
-            const matchesSearch = t.title.toLowerCase().includes(search) || t.id.toLowerCase().includes(search);
-            const matchesPriority = priority === 'ALL' || t.priority === priority;
-            const matchesDept = dept === 'ALL' || t.origin === dept || t.target === dept;
-            const matchesBlocked = !blockedOnly || t.isBlocked;
+          ${t.description ? `<p class="text-[11px] text-slate-400 line-clamp-2">${escapeHtml(t.description)}</p>` : ''}
 
-            return matchesSearch && matchesPriority && matchesDept && matchesBlocked;
-        });
+          ${t.isBlocked ? `
+            <div class="p-1.5 bg-red-950/50 border border-red-500/30 rounded text-[10px] text-red-300 flex items-center gap-1">
+              <i class="fa-solid fa-triangle-exclamation text-red-400"></i>
+              <span class="truncate">${escapeHtml(t.blockerReason || 'Blocked')}</span>
+            </div>
+          ` : ''}
+
+          <!-- Card Actions (Touch & Mobile friendly) -->
+          <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+            <button onclick="openMoveModal('${t.id}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-medium border border-slate-700 flex items-center gap-1">
+              <i class="fa-solid fa-arrows-up-down-left-right text-[9px]"></i> Move
+            </button>
+            <div class="flex items-center gap-1">
+              <button onclick="openEditTicketModal('${t.id}')" class="p-1 text-slate-400 hover:text-white rounded">
+                <i class="fa-solid fa-pen-to-square text-xs"></i>
+              </button>
+              <button onclick="deleteTicket('${t.id}')" class="p-1 text-slate-400 hover:text-red-400 rounded">
+                <i class="fa-solid fa-trash text-xs"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      `;
     }
 
-    window.applyFilters = function() {
-        renderKanban();
-        updateMetrics();
-    };
-
-    function renderSwimlanes() {
-        const container = document.getElementById('swimlane-container');
-        const depts = ['Tech', 'Admin', 'Finance', 'Sales', 'Marketing'];
-        const filtered = getFilteredTickets();
-
-        if (!container) return;
-        container.innerHTML = depts.map(dept => {
-            const deptTickets = filtered.filter(t => t.target === dept);
-            return `
-                <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-                        <h3 class="font-bold text-sm text-white flex items-center">
-                            <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
-                            Target: ${dept} Department
-                        </h3>
-                        <span class="text-xs text-slate-400 font-mono">${deptTickets.length} Active Handoffs</span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        ${deptTickets.length > 0 
-                            ? deptTickets.map(t => createTicketCardHTML(t)).join('')
-                            : `<div class="text-xs text-slate-500 italic py-2">No active tickets targeting ${dept}.</div>`
-                        }
-                    </div>
-                </div>
-            `;
-        }).join('');
+    // DRAG AND DROP HANDLERS
+    function allowDrop(e) { e.preventDefault(); }
+    function handleDragStart(e, id) { e.dataTransfer.setData('text/plain', id); }
+    function handleDrop(e, columnId) {
+      e.preventDefault();
+      const id = e.dataTransfer.getData('text/plain');
+      const ticket = tickets.find(t => t.id === id);
+      if (ticket) {
+        ticket.columnId = columnId;
+        persistTicket(ticket);
+      }
     }
 
-    function renderStandupView() {
-        const container = document.getElementById('standup-cards-container');
-        const standupTickets = tickets.filter(t => t.priority === 'P1' || t.isBlocked || t.stage === '1. Intake / Unassigned');
+    // MOBILE TAP-TO-MOVE MODAL
+    function openMoveModal(ticketId) {
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (!ticket) return;
+      document.getElementById('move-ticket-id').value = ticketId;
+      const optionsContainer = document.getElementById('move-modal-options');
+      
+      optionsContainer.innerHTML = COLUMNS.map(col => `
+        <button onclick="executeMoveTicket('${col.id}')" 
+          class="w-full text-left p-2.5 rounded-lg border text-xs font-semibold flex items-center justify-between ${ticket.columnId === col.id ? 'bg-brand-900/40 border-brand-500 text-brand-300' : 'bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-700'}">
+          <span>${col.title}</span>
+          ${ticket.columnId === col.id ? '<i class="fa-solid fa-check text-brand-400"></i>' : ''}
+        </button>
+      `).join('');
 
-        const badge = document.getElementById('standup-badge');
-        if (badge) badge.textContent = standupTickets.length;
-
-        if (container) {
-            container.innerHTML = standupTickets.length > 0 
-                ? standupTickets.map(t => createTicketCardHTML(t)).join('')
-                : `<div class="col-span-full p-8 text-center text-xs text-slate-500 bg-slate-900 rounded-xl border border-slate-800">
-                    <i class="fa-solid fa-circle-check text-emerald-400 text-2xl mb-2"></i>
-                    <p>No P1 Criticals or Blockers present! Standup items cleared.</p>
-                   </div>`;
-        }
+      document.getElementById('move-modal').classList.remove('hidden');
     }
 
-    window.openTicketModal = function(id) {
-        const t = tickets.find(ticket => ticket.id === id);
-        if (!t) return;
+    function closeMoveModal() {
+      document.getElementById('move-modal').classList.add('hidden');
+    }
 
-        activeTicketId = id;
-        document.getElementById('modal-ticket-id').textContent = t.id;
-        document.getElementById('modal-title').value = t.title;
-        document.getElementById('modal-stage').value = t.stage;
-        document.getElementById('modal-origin').value = t.origin;
-        document.getElementById('modal-target').value = t.target;
-        document.getElementById('modal-assignee').value = t.assignee || '';
-        document.getElementById('modal-priority').value = t.priority;
-        document.getElementById('modal-blocked-check').checked = t.isBlocked;
-        document.getElementById('modal-blocker-note').value = t.blockerNote || '';
+    function executeMoveTicket(newColumnId) {
+      const ticketId = document.getElementById('move-ticket-id').value;
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (ticket) {
+        ticket.columnId = newColumnId;
+        persistTicket(ticket);
+      }
+      closeMoveModal();
+    }
 
-        const checklistContainer = document.getElementById('modal-checklist');
-        if (checklistContainer) {
-            checklistContainer.innerHTML = (t.checklist || []).map((item, idx) => `
-                <label class="flex items-center space-x-2 bg-slate-900 p-2 rounded-lg border border-slate-800 cursor-pointer">
-                    <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleChecklistItem(${idx})" class="rounded border-slate-800 bg-slate-950 text-blue-500">
-                    <span class="${item.done ? 'line-through text-slate-500' : 'text-slate-200'}">${item.text}</span>
-                </label>
-            `).join('');
+    // MOBILE COLUMN NAV TAB FILTER
+    function setMobileActiveColumn(colId) {
+      mobileActiveColumn = colId;
+      document.querySelectorAll('.mob-col-tab').forEach(btn => {
+        btn.className = 'mob-col-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-800 text-slate-300 border border-slate-700';
+      });
+      const activeBtn = document.getElementById(`mob-tab-${colId}`);
+      if (activeBtn) {
+        activeBtn.className = 'mob-col-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-brand-600 text-white shadow';
+      }
+      renderBoard();
+    }
+
+    // NEW & EDIT TICKET MODAL HANDLERS
+    function openNewTicketModal() {
+      document.getElementById('ticket-id').value = '';
+      document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-square-plus text-brand-500"></i> New BizOps Request';
+      document.getElementById('ticket-form').reset();
+      toggleBlockerInput(false);
+      document.getElementById('ticket-modal').classList.remove('hidden');
+    }
+
+    function openEditTicketModal(id) {
+      const t = tickets.find(x => x.id === id);
+      if (!t) return;
+      document.getElementById('ticket-id').value = t.id;
+      document.getElementById('modal-title').innerHTML = '<i class="fa-solid fa-pen-to-square text-brand-500"></i> Edit BizOps Request';
+      document.getElementById('form-title').value = t.title;
+      document.getElementById('form-source-dept').value = t.sourceDept;
+      document.getElementById('form-target-dept').value = t.targetDept;
+      document.getElementById('form-coordinator').value = t.coordinator;
+      document.getElementById('form-priority').value = t.priority;
+      document.getElementById('form-description').value = t.description || '';
+      document.getElementById('form-is-blocked').checked = t.isBlocked;
+      document.getElementById('form-blocker-reason').value = t.blockerReason || '';
+      toggleBlockerInput(t.isBlocked);
+      document.getElementById('ticket-modal').classList.remove('hidden');
+    }
+
+    function closeTicketModal() {
+      document.getElementById('ticket-modal').classList.add('hidden');
+    }
+
+    function toggleBlockerInput(checked) {
+      const container = document.getElementById('blocker-reason-container');
+      if (checked) container.classList.remove('hidden');
+      else container.classList.add('hidden');
+    }
+
+    function handleTicketFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('ticket-id').value || 'TICK-' + Math.floor(100 + Math.random() * 900);
+      const existing = tickets.find(t => t.id === id);
+      
+      const ticket = {
+        id,
+        title: document.getElementById('form-title').value,
+        sourceDept: document.getElementById('form-source-dept').value,
+        targetDept: document.getElementById('form-target-dept').value,
+        coordinator: document.getElementById('form-coordinator').value,
+        priority: document.getElementById('form-priority').value,
+        description: document.getElementById('form-description').value,
+        isBlocked: document.getElementById('form-is-blocked').checked,
+        blockerReason: document.getElementById('form-blocker-reason').value,
+        columnId: existing ? existing.columnId : (document.getElementById('form-is-blocked').checked ? 'BLOCKED' : 'INTAKE'),
+        createdAt: existing ? existing.createdAt : new Date().toISOString()
+      };
+
+      persistTicket(ticket);
+      closeTicketModal();
+    }
+
+    // CLOUD SYNC CONFIG HANDLERS
+    function openConfigModal() {
+      const savedConfig = localStorage.getItem('bizops_firebase_config');
+      if (savedConfig) {
+        document.getElementById('config-json-input').value = savedConfig;
+      }
+      document.getElementById('config-error').classList.add('hidden');
+      document.getElementById('config-modal').classList.remove('hidden');
+    }
+
+    function closeConfigModal() {
+      document.getElementById('config-modal').classList.add('hidden');
+    }
+
+    function saveFirebaseConfig() {
+      const rawText = document.getElementById('config-json-input').value;
+      const errBox = document.getElementById('config-error');
+      
+      try {
+        const parsed = parseConfigFlexible(rawText);
+        if (!parsed || !parsed.apiKey || !parsed.projectId) {
+          throw new Error("Configuration snippet missing required fields (apiKey, projectId)");
         }
+        localStorage.setItem('bizops_firebase_config', JSON.stringify(parsed));
+        errBox.classList.add('hidden');
+        closeConfigModal();
+        alert("Firebase Configuration Saved! Reloading app to connect to live database...");
+        window.location.reload();
+      } catch (err) {
+        errBox.innerText = "Error: " + err.message;
+        errBox.classList.remove('hidden');
+      }
+    }
 
-        openModal('modal-ticket');
-    };
+    function clearFirebaseConfig() {
+      if (confirm("Disconnect Cloud Sync and revert to local browser storage?")) {
+        localStorage.removeItem('bizops_firebase_config');
+        window.location.reload();
+      }
+    }
 
-    window.toggleChecklistItem = async function(idx) {
-        const t = tickets.find(ticket => ticket.id === activeTicketId);
-        if (t && t.checklist && t.checklist[idx]) {
-            t.checklist[idx].done = !t.checklist[idx].done;
-            if (db && currentUser) {
-                const ticketRef = doc(db, 'artifacts', appId, 'public', 'data', 'tickets', t.id);
-                await updateDoc(ticketRef, { checklist: t.checklist });
-            } else {
-                openTicketModal(activeTicketId);
-                renderKanban();
-            }
-        }
-    };
+    // SOP MODAL HANDLERS
+    function openSOPModal() { document.getElementById('sop-modal').classList.remove('hidden'); }
+    function closeSOPModal() { document.getElementById('sop-modal').classList.add('hidden'); }
 
-    window.saveTicketChanges = async function() {
-        const t = tickets.find(ticket => ticket.id === activeTicketId);
-        if (t) {
-            t.title = document.getElementById('modal-title').value;
-            t.stage = document.getElementById('modal-stage').value;
-            t.origin = document.getElementById('modal-origin').value;
-            t.target = document.getElementById('modal-target').value;
-            t.assignee = document.getElementById('modal-assignee').value;
-            t.priority = document.getElementById('modal-priority').value;
-            t.isBlocked = document.getElementById('modal-blocked-check').checked;
-            t.blockerNote = document.getElementById('modal-blocker-note').value;
+    // STANDUP TIMER LOGIC
+    function toggleStandupMode() {
+      const banner = document.getElementById('standup-banner');
+      banner.classList.toggle('hidden');
+    }
 
-            if (db && currentUser) {
-                const ticketRef = doc(db, 'artifacts', appId, 'public', 'data', 'tickets', t.id);
-                await setDoc(ticketRef, t, { merge: true });
-            } else {
-                renderKanban();
-                renderSwimlanes();
-                renderStandupView();
-                updateMetrics();
-            }
-            closeModal('modal-ticket');
-        }
-    };
+    function toggleTimer() {
+      const btn = document.getElementById('timer-btn');
+      if (isTimerRunning) {
+        clearInterval(standupTimerInterval);
+        isTimerRunning = false;
+        btn.innerText = 'Resume';
+      } else {
+        isTimerRunning = true;
+        btn.innerText = 'Pause';
+        standupTimerInterval = setInterval(() => {
+          if (standupSeconds > 0) {
+            standupSeconds--;
+            updateTimerDisplay();
+          } else {
+            clearInterval(standupTimerInterval);
+            isTimerRunning = false;
+            alert("10-Minute Standup Time is Complete!");
+          }
+        }, 1000);
+      }
+    }
 
-    window.deleteCurrentTicket = async function() {
-        if (activeTicketId) {
-            if (db && currentUser) {
-                const ticketRef = doc(db, 'artifacts', appId, 'public', 'data', 'tickets', activeTicketId);
-                await deleteDoc(ticketRef);
-            } else {
-                tickets = tickets.filter(t => t.id !== activeTicketId);
-                renderKanban();
-                renderSwimlanes();
-                renderStandupView();
-                updateMetrics();
-            }
-            closeModal('modal-ticket');
-        }
-    };
-
-    window.openNewTicketModal = function() {
-        openModal('modal-new');
-    };
-
-    window.handleNewTicketSubmit = async function(e) {
-        e.preventDefault();
-        const title = document.getElementById('new-title').value;
-        const origin = document.getElementById('new-origin').value;
-        const target = document.getElementById('new-target').value;
-        const priority = document.getElementById('new-priority').value;
-        const assignee = document.getElementById('new-assignee').value;
-        const rawChecklist = document.getElementById('new-checklist').value;
-
-        const checklist = rawChecklist ? rawChecklist.split(',').map(item => ({ text: item.trim(), done: false })) : [];
-
-        const newId = `BIZ-00${100 + tickets.length + Math.floor(Math.random() * 90) + 10}`;
-        const newTicket = {
-            id: newId,
-            title,
-            stage: '1. Intake / Unassigned',
-            origin,
-            target,
-            assignee,
-            priority,
-            slaDeadline: new Date(Date.now() + 86400000).toISOString(),
-            isBlocked: false,
-            blockerNote: '',
-            checklist
-        };
-
-        if (db && currentUser) {
-            const ticketRef = doc(db, 'artifacts', appId, 'public', 'data', 'tickets', newTicket.id);
-            await setDoc(ticketRef, newTicket);
-        } else {
-            tickets.unshift(newTicket);
-            renderKanban();
-            updateMetrics();
-        }
-
-        document.getElementById('new-title').value = '';
-        document.getElementById('new-checklist').value = '';
-        closeModal('modal-new');
-    };
-
-    window.toggleTimer = function() {
-        const icon = document.getElementById('timer-icon');
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            if (icon) icon.className = 'fa-solid fa-play';
-        } else {
-            if (icon) icon.className = 'fa-solid fa-pause';
-            timerInterval = setInterval(() => {
-                if (standupTimerSeconds > 0) {
-                    standupTimerSeconds--;
-                    updateTimerDisplay();
-                } else {
-                    clearInterval(timerInterval);
-                    timerInterval = null;
-                    if (icon) icon.className = 'fa-solid fa-play';
-                }
-            }, 1000);
-        }
-    };
-
-    window.resetTimer = function() {
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        }
-        standupTimerSeconds = 600;
-        updateTimerDisplay();
-        const icon = document.getElementById('timer-icon');
-        if (icon) icon.className = 'fa-solid fa-play';
-    };
+    function resetTimer() {
+      clearInterval(standupTimerInterval);
+      isTimerRunning = false;
+      standupSeconds = 600;
+      updateTimerDisplay();
+      document.getElementById('timer-btn').innerText = 'Start Timer';
+    }
 
     function updateTimerDisplay() {
-        const mins = Math.floor(standupTimerSeconds / 60);
-        const secs = standupTimerSeconds % 60;
-        const timerDisplay = document.getElementById('timer-display');
-        if (timerDisplay) {
-            timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
+      const mins = Math.floor(standupSeconds / 60);
+      const secs = standupSeconds % 60;
+      document.getElementById('standup-timer').innerText = 
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
 
-    window.startStandupSession = function() {
-        switchView('standup');
-        resetTimer();
-        toggleTimer();
-    };
-
-    function updateMetrics() {
-        const totalEl = document.getElementById('metric-total');
-        const p1El = document.getElementById('metric-p1');
-        const blockedEl = document.getElementById('metric-blocked');
-
-        if (totalEl) totalEl.textContent = tickets.length;
-        if (p1El) p1El.textContent = tickets.filter(t => t.priority === 'P1').length;
-        if (blockedEl) blockedEl.textContent = tickets.filter(t => t.isBlocked).length;
+    // HELPER FUNCTIONS
+    function toggleBlockerFilter() {
+      showBlockersOnly = !showBlockersOnly;
+      const btn = document.getElementById('btn-filter-blockers');
+      if (showBlockersOnly) {
+        btn.className = 'px-2.5 py-2 bg-red-600 text-white rounded-lg text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition shadow';
+      } else {
+        btn.className = 'px-2.5 py-2 bg-slate-900 border border-slate-700 text-slate-300 rounded-lg text-xs font-medium whitespace-nowrap flex items-center gap-1.5 transition';
+      }
+      renderBoard();
     }
 
-    window.onload = function() {
-        renderKanban();
-        renderSwimlanes();
-        renderStandupView();
-        updateMetrics();
-        initFirebase();
-    };
-</script>
+    function toggleMobileMenu() {
+      document.getElementById('mobile-menu').classList.toggle('hidden');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+  </script>
+
 </body>
 </html>
