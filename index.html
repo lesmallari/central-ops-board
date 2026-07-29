@@ -67,18 +67,48 @@
       <div class="flex items-center justify-between h-16">
         
         <!-- Logo & Title -->
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-slate-900 font-black shadow-lg text-lg">
-            BO
+        <div class="flex items-center gap-3 sm:gap-4">
+          
+          <!-- MCPS Logo Display (Image with SVG Vector Fallback) -->
+          <div class="flex items-center">
+            <img src="mcps-logo.png" alt="Milkyway Control & Power Services Corp." 
+                 class="h-8 sm:h-10 w-auto object-contain max-w-[160px] sm:max-w-[220px]"
+                 onerror="this.style.display='none'; document.getElementById('mcps-svg-fallback').classList.remove('hidden');">
+            
+            <!-- Crisp Vector Logo Fallback if image file is not present in root directory -->
+            <div id="mcps-svg-fallback" class="hidden flex items-center gap-2.5">
+              <svg class="w-8 h-8 sm:w-10 sm:h-10 shrink-0" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="redSwirl" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#ef4444" />
+                    <stop offset="100%" stop-color="#9f1239" />
+                  </linearGradient>
+                  <linearGradient id="blueSwirl" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#3b82f6" />
+                    <stop offset="100%" stop-color="#1e3a8a" />
+                  </linearGradient>
+                </defs>
+                <path d="M 50,5 A 45,45 0 0,1 95,50 C 85,50 70,35 50,30 C 35,26 25,35 15,45 C 20,20 35,8 50,5 Z" fill="url(#redSwirl)" />
+                <path d="M 50,95 A 45,45 0 0,1 5,50 C 15,50 30,65 50,70 C 65,74 75,65 85,55 C 80,80 65,92 50,95 Z" fill="url(#blueSwirl)" />
+                <circle cx="50" cy="50" r="11" fill="#60a5fa" />
+              </svg>
+              <div class="flex flex-col">
+                <span class="text-xs sm:text-sm font-black text-blue-400 tracking-wider leading-none uppercase">MILKYWAY CONTROL</span>
+                <span class="text-[8px] sm:text-[10px] font-bold text-slate-300 tracking-tight leading-tight uppercase">& POWER SERVICES CORP.</span>
+              </div>
+            </div>
           </div>
+
+          <div class="h-7 w-[1px] bg-slate-700 hidden sm:block"></div>
+
           <div>
-            <h1 class="text-base sm:text-lg font-bold text-white leading-tight flex items-center gap-2">
+            <h1 class="text-xs sm:text-base font-bold text-white leading-tight flex items-center gap-2">
               BizOps Hub
-              <span id="sync-badge" class="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+              <span id="sync-badge" class="px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                 <i class="fa-solid fa-hard-drive text-[10px]"></i> Local Mode
               </span>
             </h1>
-            <p class="text-xs text-slate-400 hidden sm:block">Central Operations & Inter-Departmental Tracking</p>
+            <p class="text-[11px] text-slate-400 hidden lg:block">Central Operations & Inter-Departmental Tracking</p>
           </div>
         </div>
 
